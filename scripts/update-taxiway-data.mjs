@@ -14,6 +14,7 @@ const existing = JSON.parse(await readFile(output, 'utf8').catch(() => '{}'));
 // Pavement fill colours differ per chart; each entry is checked visually against its ADC.
 const sources = {
   EKCH: { kind: 'chart', taxiway: ['#e1e1e1'], apron: [] },
+  EKAH: { kind: 'osm' },
   EKBI: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
   EKYT: { kind: 'chart', taxiway: ['#969696'], apron: ['#d2d2d2'] },
 };
@@ -281,34 +282,49 @@ async function overpass(query) {
   throw new Error('Overpass is unavailable; retry later');
 }
 
-// OpenStreetMap: taxiway centrelines (drawn at their tagged or a default width) and apron areas.
+// OpenStreetMap: taxiway centrelines (drawn at their tagged or a default width), aprons and runway
+// pavement. Only taxiways named on the official ADC are kept, which leaves out military taxiways
+// (shelter areas etc.); aprons must touch a kept taxiway.
 async function fromOsm(icao) {
   const layout = runwayData[icao];
   const frame = localFrame(layout.thresholds);
+  const chart = await readChart(layout.source.url);
+  const chartNames = new Set(chart.text.filter(item => LABEL.test(item.text) && !NOT_TAXIWAYS.has(item.text) && Math.abs(item.angle) < 0.02).map(item => item.text));
   const corners = layout.thresholds.map(value => frame.toLocal([coordinateToDecimal(value.latitude), coordinateToDecimal(value.longitude)]));
   const [south, west] = frame.toGeo([Math.min(...corners.map(c => c[0])) - 1500, Math.min(...corners.map(c => c[1])) - 1500]);
   const [north, east] = frame.toGeo([Math.max(...corners.map(c => c[0])) + 1500, Math.max(...corners.map(c => c[1])) + 1500]);
-  const query = `[out:json][timeout:60];way["aeroway"~"^(taxiway|apron)$"](${south},${west},${north},${east});out geom tags;`;
+  const query = `[out:json][timeout:60];way["aeroway"~"^(taxiway|apron|runway)$"](${south},${west},${north},${east});out geom tags;`;
   // OSM_FILE replays a saved Overpass response, e.g. when Overpass is overloaded.
   const result = process.env.OSM_FILE ? JSON.parse(await readFile(process.env.OSM_FILE, 'utf8')) : await overpass(query);
   const geo = way => way.geometry.map(node => [round(node.lat), round(node.lon)]);
-  const areas = result.elements.filter(way => way.tags.aeroway === 'apron' && way.geometry?.length > 3).map(way => ({ kind: 'apron', rings: [geo(way)] }));
-  const taxiways = result.elements.filter(way => way.tags.aeroway === 'taxiway' && way.geometry?.length > 1);
+  const refs = way => String(way.tags.ref || '').split(/\s*;\s*/).filter(Boolean);
+  const taxiways = result.elements.filter(way => way.tags.aeroway === 'taxiway' && way.geometry?.length > 1 && refs(way).some(ref => chartNames.has(ref)));
   const lines = taxiways.map(way => ({ width: Number.parseFloat(way.tags.width) || 18, points: geo(way) }));
-  const labels = [];
   const metres = (a, b) => Math.hypot(...frame.toLocal(a).map((value, axis) => value - frame.toLocal(b)[axis]));
-  for (const way of taxiways.filter(value => LABEL.test(value.tags.ref || ''))) {
+  const taxiwayPoints = lines.flatMap(line => line.points);
+  const areas = result.elements.filter(way => way.tags.aeroway === 'apron' && way.geometry?.length > 3 && !way.tags.military && geo(way).some(point => taxiwayPoints.some(other => metres(point, other) < 60))).map(way => ({ kind: 'apron', rings: [geo(way)] }));
+  // Runway pavement: the OSM runway centreline (end to end) widened to its tagged or published width.
+  const runways = result.elements.filter(way => way.tags.aeroway === 'runway' && way.geometry?.length > 1).map(way => {
+    const points = geo(way).map(point => frame.toLocal(point));
+    const [ax, ay] = points[0], [bx, by] = points[points.length - 1];
+    const length = Math.hypot(bx - ax, by - ay), half = (Number.parseFloat(way.tags.width) || layout.thresholds[0].width || 45) / 2;
+    const nx = -(by - ay) / length * half, ny = (bx - ax) / length * half;
+    return [[ax + nx, ay + ny], [bx + nx, by + ny], [bx - nx, by - ny], [ax - nx, ay - ny], [ax + nx, ay + ny]].map(point => frame.toGeo(point).map(round));
+  });
+  const labels = [];
+  for (const way of taxiways) {
     const points = geo(way);
     const length = points.slice(1).reduce((sum, point, index) => sum + metres(point, points[index]), 0);
+    const name = refs(way).find(ref => chartNames.has(ref));
     if (length < 120) continue;
     const middle = points[Math.floor(points.length / 2)];
-    if (labels.some(label => label.text === way.tags.ref && metres([label.lat, label.lon], middle) < 400)) continue;
-    labels.push({ text: way.tags.ref, lat: middle[0], lon: middle[1] });
+    if (labels.some(label => label.text === name && metres([label.lat, label.lon], middle) < 400)) continue;
+    labels.push({ text: name, lat: middle[0], lon: middle[1] });
   }
-  console.log(`${icao}: OpenStreetMap ${lines.length} taxiway ways, ${areas.length} aprons, ${labels.length} labels`);
+  console.log(`${icao}: OpenStreetMap ${lines.length} taxiway ways named on the ADC (of ${result.elements.filter(way => way.tags.aeroway === 'taxiway').length}), ${areas.length} aprons, ${runways.length} runways, ${labels.length} labels`);
   return {
-    source: { kind: 'osm', name: 'OpenStreetMap', url: 'https://www.openstreetmap.org/copyright', retrieved: new Date().toISOString().slice(0, 10), publisher: '© OpenStreetMap contributors (ODbL)', derivation: 'Taxiway centrelines and aprons from OpenStreetMap, visually checked against the Naviair ADC. Not for navigation.' },
-    areas, lines, labels, info: taxiwayInfo(await readChart(layout.source.url)),
+    source: { kind: 'osm', name: 'OpenStreetMap', url: 'https://www.openstreetmap.org/copyright', retrieved: new Date().toISOString().slice(0, 10), publisher: '© OpenStreetMap contributors (ODbL)', derivation: 'Taxiways named on the Naviair ADC, their aprons and runway pavement from OpenStreetMap, visually checked against the ADC. Not for navigation.' },
+    areas, lines, runways, labels, info: taxiwayInfo(chart),
   };
 }
 
