@@ -13,7 +13,8 @@
     "prebuild": "node scripts/setup-pdf-assets.mjs",
     "inspect:runways": "node scripts/inspect-aerodromes.mjs",
     "verify:ils": "node scripts/inspect-ils.mjs",
-    "update:runways": "node scripts/inspect-aerodromes.mjs && node scripts/update-runway-data.mjs"
+    "update:runways": "node scripts/inspect-aerodromes.mjs && node scripts/update-runway-data.mjs",
+    "update:taxiways": "node scripts/update-taxiway-data.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "5.2.8",

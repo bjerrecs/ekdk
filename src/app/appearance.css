@@ -76,3 +76,20 @@
 .runway-select .text-link,.panel small .text-link{display:inline;min-height:0;font-size:12px}
 [data-theme=dark] .runway-select .text-link,[data-theme=dark] .panel small .text-link{color:var(--blue)}
 @media(max-width:650px){.runway-select{align-items:flex-start}.runway-select>small{text-align:left}}
+.ground-diagram .pavement-taxiway{fill:#9fb0c2}
+.ground-diagram .pavement-apron{fill:#c3cfdb}
+.ground-diagram .ground-labels text{font-size:5.5px;font-weight:700;fill:#0b2b52;paint-order:stroke;stroke:#eef2f6;stroke-width:1.4px;stroke-linejoin:round}
+.ground-diagram .runway-label{font-size:8px}
+[data-theme=dark] .ground-diagram .pavement-taxiway{fill:#4c6580}
+[data-theme=dark] .ground-diagram .pavement-apron{fill:#2f455d}
+[data-theme=dark] .ground-diagram .ground-labels text{fill:#e3ecf7;stroke:#172334}
+.ground-mode .large-layout{height:560px}
+@media(max-width:1000px){.ground-mode .large-layout{height:420px}}
+.ground-diagram .pavement-centreline{fill:none;stroke:#9fb0c2;stroke-linecap:round;stroke-linejoin:round}
+[data-theme=dark] .ground-diagram .pavement-centreline{stroke:#4c6580}
+.ground-mode .large-layout{padding:10px}
+.info-row{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:19px}
+.info-row:first-child{padding-top:0}
+.info-row>span{color:var(--muted)}
+.info-row>div{display:flex;flex-direction:column}
+.panel-body>.info-row+small.muted{display:block;margin-top:12px}
