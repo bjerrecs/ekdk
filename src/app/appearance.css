@@ -71,3 +71,8 @@
 [data-theme=dark] .airport-filter{border-color:var(--line)}
 @media(max-width:1250px){.command-bar .airport-switcher>button{min-width:0}.airport-switcher-name{display:none}}
 @media(max-width:650px){.command-bar .airport-switcher{padding:0 10px 0 0}.command-bar .airport-switcher>button{min-height:40px;padding:0 10px;gap:8px}.airport-switcher small{display:none}.airport-menu{right:10px;width:250px}}
+.runway-select{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+.runway-select>small{font-size:12px;line-height:17px;color:var(--muted);text-align:right;max-width:340px}
+.runway-select .text-link,.panel small .text-link{display:inline;min-height:0;font-size:12px}
+[data-theme=dark] .runway-select .text-link,[data-theme=dark] .panel small .text-link{color:var(--blue)}
+@media(max-width:650px){.runway-select{align-items:flex-start}.runway-select>small{text-align:left}}
