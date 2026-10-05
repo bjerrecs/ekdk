@@ -94,3 +94,5 @@
 .info-row>span{color:var(--muted)}
 .info-row>div{display:flex;flex-direction:column}
 .panel-body>.info-row+small.muted{display:block;margin-top:12px}
+.ground-diagram .ground-runway{fill:#344658}
+[data-theme=dark] .ground-diagram .ground-runway{fill:#a4bbd1}
