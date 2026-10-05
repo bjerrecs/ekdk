@@ -1,8 +1,7 @@
 # Portainer stack. Set the variables below in the stack's "Environment variables" section.
 services:
   ekdk:
-    build:
-      context: .
+    image: ghcr.io/bjerrecs/ekdk:${EKDK_TAG:-latest}
     container_name: ekdk
     restart: unless-stopped
     ports:
