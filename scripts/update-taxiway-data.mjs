@@ -16,6 +16,8 @@ const sources = {
   EKCH: { kind: 'chart', taxiway: ['#e1e1e1'], apron: [] },
   EKAH: { kind: 'osm' },
   EKBI: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
+  // EKEB does use taxiway I (ADC taxiway table), which is otherwise filtered as an ICAO-avoided letter.
+  EKEB: { kind: 'chart', taxiway: ['#d2d2d2'], apron: [], taxiwayNames: ['I'] },
   EKOD: { kind: 'osm' },
   EKRN: { kind: 'chart', taxiway: ['#d2d2d2'], apron: [], maxSpan: 300 },
   EKRK: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
@@ -240,7 +242,16 @@ function taxiwayInfo(chart) {
     if (lines.length && /:$/.test(lines[lines.length - 1])) lines[lines.length - 1] += ` ${parts.join(' ')}`;
     else lines.push(parts.join(' '));
   }
-  return sections;
+  // Some charts list sub-rows ("A :", "Blue edge LIL :") under an empty main key; fold them into it
+  // until the next standard key.
+  const MAIN = /^(Width|Pavement|Strength|Day marking|Marking|Lighting|Width \/ Pavement|Taxiing guidance system|Rapid exit taxiways)$/i;
+  const folded = [];
+  for (const section of sections) {
+    const parent = folded[folded.length - 1];
+    if (parent?.folding && !MAIN.test(section.label)) parent.lines.push(`${section.label} : ${section.lines[0] || ''}`.trim(), ...section.lines.slice(1));
+    else folded.push({ ...section, folding: section.lines.length === 0 });
+  }
+  return folded.map(({ label, lines }) => ({ label, lines }));
 }
 
 async function fromChart(icao, config) {
@@ -271,7 +282,7 @@ async function fromChart(icao, config) {
   const pageRings = chart.paths.filter(value => value.filled && [...config.taxiway, ...config.apron].includes(value.fill)).flatMap(value => value.subpaths).filter(pavementSized);
   const labels = [];
   // Taxiway names are set horizontally; rotated letters belong to the graticule labels.
-  for (const item of chart.text.filter(value => LABEL.test(value.text) && !NOT_TAXIWAYS.has(value.text) && Math.abs(value.angle) < 0.02)) {
+  for (const item of chart.text.filter(value => LABEL.test(value.text) && (!NOT_TAXIWAYS.has(value.text) || config.taxiwayNames?.includes(value.text)) && Math.abs(value.angle) < 0.02)) {
     const centre = [item.x + item.width / 2, item.y - item.size / 2];
     if (!near(centre, pageRings, 22)) continue;
     const [lat, lon] = frame.toGeo(fit.map(centre)).map(round);
