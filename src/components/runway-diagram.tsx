@@ -23,10 +23,14 @@ export default function RunwayDiagram({ icao, large = false, ground = false }: {
   const frame = taxiways ? { width: 400, height: groundHeight, fitWidth: 360, fitHeight: groundHeight - 56, centerY: groundHeight / 2 } : { width: 255, height: 174, fitWidth: 195, fitHeight: 110, centerY: 88 };
   const { pairs, project, metresPerUnit } = projectLayout(layout.thresholds, groundPoints, frame);
   const runwayPoints = taxiways?.runways?.flat().map(point => project(point)) || [];
+  // Ground layouts vary, so the north arrow takes the free corner with the least drawing near it
+  // (top right is reserved for the Official ADC button, bottom left for the source label).
+  const crowding = ([x, y]: [number, number]) => [...groundPoints.map(point => project(point)), ...runwayPoints, ...pairs.flatMap(({ start, end }) => [[start.x, start.y], [end.x, end.y]])].filter(([px, py]) => Math.hypot(px - x, py - (y + 29)) < 34).length;
+  const northAt: [number, number] = taxiways ? ([[22, 0], [frame.width - 18, 34], [frame.width - 18, frame.height - 52]] as [number, number][]).reduce((best, corner) => crowding(corner) < crowding(best) ? corner : best) : [frame.width - 18, 0];
   const ringPath = (ring: [number, number][]) => ring.map((point, index) => `${index ? 'L' : 'M'}${project(point).map(value => value.toFixed(2)).join(' ')}`).join('') + 'Z';
   return <svg className={`${large ? 'airport-diagram large runway-diagram' : 'airport-diagram runway-diagram'}${taxiways ? ' ground-diagram' : ''}`} viewBox={`0 0 ${frame.width} ${frame.height}`} role="img" aria-label={`${icao} ${taxiways ? 'runway and taxiway' : 'runway threshold'} schematic derived from the Naviair aerodrome chart, North up. Not for navigation.`}>
     <title>{layout.source.publisher} · {layout.source.name} · {layout.source.derivation}{taxiways ? ` · Taxiways: ${taxiways.source.derivation}` : ''}</title>
-    <g className="diagram-north" transform={taxiways ? "translate(-215 0)" : `translate(${frame.width - 255} 0)`}><text x="237" y="19" textAnchor="middle">N</text><path d="M237 25V39M233 30L237 25L241 30" fill="none" stroke="currentColor" strokeWidth="1.2" /></g>
+    <g className="diagram-north" transform={`translate(${northAt[0] - 237} ${northAt[1]})`}><text x="237" y="19" textAnchor="middle">N</text><path d="M237 25V39M233 30L237 25L241 30" fill="none" stroke="currentColor" strokeWidth="1.2" /></g>
     {taxiways && <g className="ground-pavement">{taxiways.areas.map((area, index) => <path key={index} className={`pavement-${area.kind}`} d={area.rings.map(ringPath).join('')} fillRule="evenodd" />)}{taxiways.lines?.map((line, index) => <path key={`line-${index}`} className="pavement-centreline" d={ringPath(line.points).slice(0, -1)} strokeWidth={Math.max(line.width / metresPerUnit, 0.8)} />)}</g>}
     {taxiways?.runways && <path className="ground-runway" d={taxiways.runways.map(ringPath).join('')} fillRule="evenodd" />}
     {pairs.map(({ start, end }) => {

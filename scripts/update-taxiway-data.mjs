@@ -21,6 +21,7 @@ const sources = {
   EKOD: { kind: 'osm' },
   EKRN: { kind: 'chart', taxiway: ['#d2d2d2'], apron: [], maxSpan: 300 },
   EKRK: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
+  EKSB: { kind: 'chart', taxiway: ['#d2d2d2'], apron: [], maxSpan: 300 },
   EKSP: { kind: 'chart', taxiway: ['#d2d2d2'], apron: [] },
   EKYT: { kind: 'chart', taxiway: ['#969696'], apron: ['#d2d2d2'] },
 };
