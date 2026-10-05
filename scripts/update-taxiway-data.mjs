@@ -16,6 +16,7 @@ const sources = {
   EKCH: { kind: 'chart', taxiway: ['#e1e1e1'], apron: [] },
   EKAH: { kind: 'osm' },
   EKBI: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
+  EKOD: { kind: 'osm' },
   EKRK: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
   EKYT: { kind: 'chart', taxiway: ['#969696'], apron: ['#d2d2d2'] },
 };
