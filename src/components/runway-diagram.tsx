@@ -22,6 +22,7 @@ export default function RunwayDiagram({ icao, large = false, ground = false }: {
   const groundHeight = taxiways ? Math.round(Math.min(Math.max(projectLayout(layout.thresholds, groundPoints).aspect * 360 + 56, 248), 580)) : 0;
   const frame = taxiways ? { width: 400, height: groundHeight, fitWidth: 360, fitHeight: groundHeight - 56, centerY: groundHeight / 2 } : { width: 255, height: 174, fitWidth: 195, fitHeight: 110, centerY: 88 };
   const { pairs, project, metresPerUnit } = projectLayout(layout.thresholds, groundPoints, frame);
+  const runwayPoints = taxiways?.runways?.flat().map(point => project(point)) || [];
   const ringPath = (ring: [number, number][]) => ring.map((point, index) => `${index ? 'L' : 'M'}${project(point).map(value => value.toFixed(2)).join(' ')}`).join('') + 'Z';
   return <svg className={`${large ? 'airport-diagram large runway-diagram' : 'airport-diagram runway-diagram'}${taxiways ? ' ground-diagram' : ''}`} viewBox={`0 0 ${frame.width} ${frame.height}`} role="img" aria-label={`${icao} ${taxiways ? 'runway and taxiway' : 'runway threshold'} schematic derived from the Naviair aerodrome chart, North up. Not for navigation.`}>
     <title>{layout.source.publisher} · {layout.source.name} · {layout.source.derivation}{taxiways ? ` · Taxiways: ${taxiways.source.derivation}` : ''}</title>
@@ -33,9 +34,12 @@ export default function RunwayDiagram({ icao, large = false, ground = false }: {
       const vectorX = (end.x - start.x) / distance;
       const vectorY = (end.y - start.y) / distance;
       // Ground mode draws runways at true width so taxiway entries stay visible.
-      const offset = taxiways ? 9 : 13;
+      // Designators sit beyond the drawn pavement, which can extend past a displaced threshold.
+      const along = runwayPoints.filter(([x, y]) => Math.abs(-(x - start.x) * vectorY + (y - start.y) * vectorX) < 4).map(([x, y]) => (x - start.x) * vectorX + (y - start.y) * vectorY);
+      const startOffset = Math.max(taxiways ? 9 : 13, along.length ? -Math.min(...along) + 7 : 0);
+      const endOffset = Math.max(taxiways ? 9 : 13, along.length ? Math.max(...along) - distance + 7 : 0);
       const width = taxiways ? Math.max(start.width / metresPerUnit, 1.2) : start.width >= 40 ? 7 : 5;
-      return <g key={start.runway}>{!taxiways?.runways && <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#344658" strokeWidth={width} />}<line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#fff" strokeWidth={taxiways ? 0.3 : 0.8} strokeDasharray={taxiways ? '2 2' : '5 5'} /><text x={start.x - vectorX * offset} y={start.y - vectorY * offset} textAnchor="middle" dominantBaseline="central" className="runway-label">{start.runway}</text><text x={end.x + vectorX * offset} y={end.y + vectorY * offset} textAnchor="middle" dominantBaseline="central" className="runway-label">{end.runway}</text></g>;
+      return <g key={start.runway}>{!taxiways?.runways && <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#344658" strokeWidth={width} />}<line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#fff" strokeWidth={taxiways ? 0.3 : 0.8} strokeDasharray={taxiways ? '2 2' : '5 5'} /><text x={start.x - vectorX * startOffset} y={start.y - vectorY * startOffset} textAnchor="middle" dominantBaseline="central" className="runway-label">{start.runway}</text><text x={end.x + vectorX * endOffset} y={end.y + vectorY * endOffset} textAnchor="middle" dominantBaseline="central" className="runway-label">{end.runway}</text></g>;
     })}
     {taxiways && <g className="ground-labels">{taxiways.labels.map((label, index) => { const [x, y] = project([label.lat, label.lon]); return <text key={index} x={x} y={y} textAnchor="middle" dominantBaseline="central">{label.text}</text>; })}</g>}
     {!taxiways && <text className="diagram-source-label" x={frame.width / 2} y={frame.height - 11} textAnchor="middle">NAVIAIR ADC</text>}

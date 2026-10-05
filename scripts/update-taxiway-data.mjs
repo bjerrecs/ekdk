@@ -207,16 +207,22 @@ function taxiwayInfo(chart) {
   const sections = [];
   let previous = heading.y;
   let pendingKey = "";
-  for (const row of rows) {
-    const parts = row.items.sort((a, b) => a.x - b.x).map(item => item.text);
-    if (row.y - previous > 30 || /^(OBSTACLES|AIRAC|RUNWAYS|OTHER)\b/.test(parts[0])) break;
+  const ordered = rows.map(row => ({ y: row.y, inKeyColumn: Math.abs(Math.min(...row.items.map(item => item.x)) - heading.x) < 4, parts: row.items.sort((a, b) => a.x - b.x).map(item => item.text) }));
+  // "TWY H :" rows are values on charts that list them under the key, not keys themselves.
+  // Keys are short ("Width / Pavement", "Taxiing guidance system"); longer "...:" lines are values.
+  const isKey = row => Boolean(row?.inKeyColumn && /:$/.test(row.parts[0]) && !/^TWY\b/.test(row.parts[0]) && row.parts[0].replace(/[/:]/g, ' ').trim().split(/\s+/).length <= 3);
+  for (const [index, row] of ordered.entries()) {
+    const parts = [...row.parts];
+    if (row.y - previous > 40 || /^(OBSTACLES|AIRAC|RUNWAYS|OTHER)\b/.test(parts[0])) break;
     previous = row.y;
-    const inKeyColumn = Math.abs(row.items[0].x - heading.x) < 4;
-    // Long keys wrap ("Taxiing" / "guidance system :"): a lone key-column word starts the next key.
-    if (inKeyColumn && parts.length === 1 && !/:$/.test(parts[0]) && /^[A-Z][a-z]/.test(parts[0])) { pendingKey = `${pendingKey}${parts[0]} `; continue; }
-    const key = inKeyColumn && /:$/.test(parts[0]) ? pendingKey + parts.shift().replace(/\s*:$/, '') : null;
-    if (key) { sections.push({ label: key, lines: [] }); pendingKey = ''; }
-    if (parts.length && sections.length) sections[sections.length - 1].lines.push(parts.join(' '));
+    // Long keys wrap ("Taxiing" / "guidance system :"): a short key-column phrase directly above a key.
+    if (row.inKeyColumn && parts.length === 1 && parts[0].split(' ').length <= 2 && !/:$/.test(parts[0]) && isKey(ordered[index + 1])) { pendingKey = `${pendingKey}${parts[0]} `; continue; }
+    if (isKey(row)) { sections.push({ label: pendingKey + parts.shift().replace(/\s*:$/, ''), lines: [] }); pendingKey = ''; }
+    if (!parts.length || !sections.length) continue;
+    const lines = sections[sections.length - 1].lines;
+    // A value line ending in ":" ("TWY H :") continues on the next line.
+    if (lines.length && /:$/.test(lines[lines.length - 1])) lines[lines.length - 1] += ` ${parts.join(' ')}`;
+    else lines.push(parts.join(' '));
   }
   return sections;
 }
