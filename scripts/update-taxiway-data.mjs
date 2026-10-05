@@ -16,6 +16,7 @@ const sources = {
   EKCH: { kind: 'chart', taxiway: ['#e1e1e1'], apron: [] },
   EKAH: { kind: 'osm' },
   EKBI: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
+  EKRK: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
   EKYT: { kind: 'chart', taxiway: ['#969696'], apron: ['#d2d2d2'] },
 };
 
@@ -104,8 +105,9 @@ function printedScale(chart) {
   return match ? Number(match[1] + match[2]) * 0.0254 / 72 : null;
 }
 
-const nearestOnSegment = ([px, py], [[ax, ay], [bx, by]]) => {
-  const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+const nearestOnLine = ([px, py], [[ax, ay], [bx, by]]) => {
+  // Unclamped: drawn runway ends can be cut short by turn pads, so thresholds may lie beyond them.
+  const dx = bx - ax, dy = by - ay, t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy);
   return [ax + t * dx, ay + t * dy];
 };
 
@@ -160,10 +162,10 @@ function georeference(chart, thresholds, frame) {
       if (underdetermined) for (const entry of setup) entry.labels = [thresholdLabel(chart, entry.ends, entry.runway.designators[0], true), thresholdLabel(chart, entry.ends, entry.runway.designators[1], false)];
       const correspondences = (fit, entry) => [0, 1].map(end => {
         const target = end ? entry.runway.end : entry.runway.start;
-        const source = entry.anchored ? entry.ends[end] : entry.labels[end] || (fit ? nearestOnSegment(fit.invert(target), entry.ends) : entry.ends[end]);
+        const source = entry.anchored ? entry.ends[end] : entry.labels[end] || (fit ? nearestOnLine(fit.invert(target), entry.ends) : entry.ends[end]);
         return [source, target];
       });
-      const anchors = setup.filter(value => value.anchored || value.labels.every(Boolean));
+      const anchors = setup.filter(value => value.anchored || (value.labels.length > 0 && value.labels.every(Boolean)));
       let fit = fitSimilarity((anchors.length ? anchors : setup).flatMap(entry => correspondences(null, entry)), fixedScale);
       for (let iteration = 0; iteration < 12; iteration++) fit = fitSimilarity(setup.flatMap(entry => correspondences(fit, entry)), fixedScale);
       const residual = Math.max(...setup.flatMap(entry => correspondences(fit, entry).map(([source, target]) => Math.hypot(fit.map(source)[0] - target[0], fit.map(source)[1] - target[1]))));
