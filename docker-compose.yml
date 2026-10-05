@@ -1,11 +1,8 @@
 # Portainer stack. Set the variables below in the stack's "Environment variables" section.
 services:
   ekdk:
-    image: ${EKDK_IMAGE:-ekdk-workspace:latest}
     build:
       context: .
-    # Build from this repo; set EKDK_PULL_POLICY=always with EKDK_IMAGE to use a registry image instead.
-    pull_policy: ${EKDK_PULL_POLICY:-build}
     container_name: ekdk
     restart: unless-stopped
     ports:

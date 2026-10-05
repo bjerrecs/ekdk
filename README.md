@@ -38,7 +38,7 @@ Auth.js assigns its own internal UUID to each user. The VATSIM provider account 
 
 The `Dockerfile` builds a standalone Next.js image running as a non-root user on port 3000. `docker-compose.yml` is a ready-made Portainer stack.
 
-1. In Portainer, go to **Stacks → Add stack → Repository** and point it at this repo (compose path `docker-compose.yml`). Portainer builds the image on the host. Or push a prebuilt image to a registry and set `EKDK_IMAGE` plus `EKDK_PULL_POLICY=always`.
+1. In Portainer, go to **Stacks → Add stack → Repository** and point it at this repo (compose path `docker-compose.yml`). Portainer builds the image on the host.
 2. Under **Environment variables**, set `AUTH_SECRET`, `AUTH_URL` (the public HTTPS URL), `VATSIM_CLIENT_ID` and `VATSIM_CLIENT_SECRET`. Optional: `VATSIM_USE_SANDBOX`, `EKDK_PORT` (host port, default 3000).
 3. Put the container behind an HTTPS reverse proxy. Register `<AUTH_URL>/api/auth/callback/vatsim` with VATSIM Connect.
 
