@@ -83,8 +83,9 @@
 [data-theme=dark] .ground-diagram .pavement-taxiway{fill:#4c6580}
 [data-theme=dark] .ground-diagram .pavement-apron{fill:#2f455d}
 [data-theme=dark] .ground-diagram .ground-labels text{fill:#e3ecf7;stroke:#172334}
-.ground-mode .large-layout{height:560px}
-@media(max-width:1000px){.ground-mode .large-layout{height:420px}}
+.ground-mode .large-layout{height:auto;min-height:420px}
+.ground-mode .airport-diagram.large{display:block;height:auto}
+@media(max-width:1000px){.ground-mode .large-layout{min-height:320px}}
 .ground-diagram .pavement-centreline{fill:none;stroke:#9fb0c2;stroke-linecap:round;stroke-linejoin:round}
 [data-theme=dark] .ground-diagram .pavement-centreline{stroke:#4c6580}
 .ground-mode .large-layout{padding:10px}

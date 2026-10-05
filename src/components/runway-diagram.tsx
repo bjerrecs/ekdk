@@ -17,8 +17,11 @@ export default function RunwayDiagram({ icao, large = false, ground = false }: {
   if (!layout) return <div className="diagram-unavailable">Verified runway geometry unavailable.</div>;
   const taxiways = ground ? groundLayout(icao) : undefined;
   // Ground mode uses a wider frame so the taxiway layout fills the panel.
-  const frame = taxiways ? { width: 400, height: 248, fitWidth: 372, fitHeight: 214, centerY: 124 } : { width: 255, height: 174, fitWidth: 195, fitHeight: 110, centerY: 88 };
-  const { pairs, project, metresPerUnit } = projectLayout(layout.thresholds, [...(taxiways?.areas.flatMap(area => area.rings.flat()) || []), ...(taxiways?.lines?.flatMap(line => line.points) || [])], frame);
+  // Ground mode sizes the frame to the airport's extent so tall layouts get height, not margins.
+  const groundPoints = [...(taxiways?.areas.flatMap(area => area.rings.flat()) || []), ...(taxiways?.lines?.flatMap(line => line.points) || [])];
+  const groundHeight = taxiways ? Math.round(Math.min(Math.max(projectLayout(layout.thresholds, groundPoints).aspect * 360 + 56, 248), 580)) : 0;
+  const frame = taxiways ? { width: 400, height: groundHeight, fitWidth: 360, fitHeight: groundHeight - 56, centerY: groundHeight / 2 } : { width: 255, height: 174, fitWidth: 195, fitHeight: 110, centerY: 88 };
+  const { pairs, project, metresPerUnit } = projectLayout(layout.thresholds, groundPoints, frame);
   const ringPath = (ring: [number, number][]) => ring.map((point, index) => `${index ? 'L' : 'M'}${project(point).map(value => value.toFixed(2)).join(' ')}`).join('') + 'Z';
   return <svg className={`${large ? 'airport-diagram large runway-diagram' : 'airport-diagram runway-diagram'}${taxiways ? ' ground-diagram' : ''}`} viewBox={`0 0 ${frame.width} ${frame.height}`} role="img" aria-label={`${icao} ${taxiways ? 'runway and taxiway' : 'runway threshold'} schematic derived from the Naviair aerodrome chart, North up. Not for navigation.`}>
     <title>{layout.source.publisher} · {layout.source.name} · {layout.source.derivation}{taxiways ? ` · Taxiways: ${taxiways.source.derivation}` : ''}</title>

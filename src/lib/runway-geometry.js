@@ -41,5 +41,5 @@ export function projectLayout(thresholds, extra = [], frame = { width: 255, fitW
     seen.add(start.runway); seen.add(end.runway);
     pairs.push({ start, end });
   }
-  return { pairs, project: point => toFrame(toLocal(point)), metresPerUnit: 111_320 / scale };
+  return { pairs, project: point => toFrame(toLocal(point)), metresPerUnit: 111_320 / scale, aspect: (northMax - northMin) / Math.max(eastMax - eastMin, 0.00001) };
 }
