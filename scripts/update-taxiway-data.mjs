@@ -18,6 +18,7 @@ const sources = {
   EKBI: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
   EKOD: { kind: 'osm' },
   EKRK: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
+  EKSP: { kind: 'chart', taxiway: ['#d2d2d2'], apron: [] },
   EKYT: { kind: 'chart', taxiway: ['#969696'], apron: ['#d2d2d2'] },
 };
 
@@ -217,7 +218,8 @@ function taxiwayInfo(chart) {
   const isKey = row => Boolean(row?.inKeyColumn && /:$/.test(row.parts[0]) && !/^TWY\b/.test(row.parts[0]) && row.parts[0].replace(/[/:]/g, ' ').trim().split(/\s+/).length <= 3);
   for (const [index, row] of ordered.entries()) {
     const parts = [...row.parts];
-    if (row.y - previous > 40 || /^(OBSTACLES|AIRAC|RUNWAYS|OTHER)\b/.test(parts[0])) break;
+    // The table ends at a gap, the footer, or the next table's capitalised heading ("CIVIL APRON").
+    if (row.y - previous > 40 || /^(OBSTACLES|AIRAC|RUNWAYS|OTHER)\b/.test(parts[0]) || (row.inKeyColumn && parts.length === 1 && /^[A-Z]{2,}( [A-Z]{2,})*$/.test(parts[0]))) break;
     previous = row.y;
     // Long keys wrap ("Taxiing" / "guidance system :"): a short key-column phrase directly above a key.
     if (row.inKeyColumn && parts.length === 1 && parts[0].split(' ').length <= 2 && !/:$/.test(parts[0]) && isKey(ordered[index + 1])) { pendingKey = `${pendingKey}${parts[0]} `; continue; }
