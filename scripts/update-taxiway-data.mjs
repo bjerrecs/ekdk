@@ -17,6 +17,7 @@ const sources = {
   EKAH: { kind: 'osm' },
   EKBI: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
   EKOD: { kind: 'osm' },
+  EKRN: { kind: 'chart', taxiway: ['#d2d2d2'], apron: [], maxSpan: 300 },
   EKRK: { kind: 'chart', taxiway: ['#a5a5a5'], apron: ['#d2d2d2'] },
   EKSP: { kind: 'chart', taxiway: ['#d2d2d2'], apron: [] },
   EKYT: { kind: 'chart', taxiway: ['#969696'], apron: ['#d2d2d2'] },
@@ -43,8 +44,9 @@ function localFrame(thresholds) {
 // shapes keeps crossing runways (drawn as one polygon) and split runways detectable.
 function runwayCandidates(chart) {
   const lines = [];
-  for (const path of chart.paths.filter(value => value.filled && value.fill === '#000000')) {
-    for (const ring of path.subpaths) {
+  const rings = chart.paths.filter(value => value.filled && value.fill === '#000000').flatMap(path => path.subpaths);
+  for (const [ringIndex, ring] of rings.entries()) {
+    {
       for (let index = 1; index < ring.length; index++) {
         const [ax, ay] = ring[index - 1], [bx, by] = ring[index];
         const length = Math.hypot(bx - ax, by - ay);
@@ -56,8 +58,8 @@ function runwayCandidates(chart) {
         const ux = Math.cos(angle), uy = Math.sin(angle), offset = -ax * uy + ay * ux;
         const along = [ax * ux + ay * uy, bx * ux + by * uy];
         const line = lines.find(value => Math.abs(value.angle - angle) < 0.006 && Math.abs(value.offset - offset) < 0.6);
-        if (line) { line.min = Math.min(line.min, ...along); line.max = Math.max(line.max, ...along); }
-        else lines.push({ angle, ux, uy, offset, min: Math.min(...along), max: Math.max(...along) });
+        if (line) { line.min = Math.min(line.min, ...along); line.max = Math.max(line.max, ...along); line.rings.add(ringIndex); }
+        else lines.push({ angle, ux, uy, offset, min: Math.min(...along), max: Math.max(...along), rings: new Set([ringIndex]) });
       }
     }
   }
@@ -69,7 +71,7 @@ function runwayCandidates(chart) {
       const min = Math.max(first.min, second.min), max = Math.min(first.max, second.max);
       if (max - min < 15 || (max - min) / width < 3) continue;
       const offset = (first.offset + second.offset) / 2, { ux, uy } = first;
-      candidates.push({ angle: first.angle, ux, uy, offset, min, max, width });
+      candidates.push({ angle: first.angle, ux, uy, offset, min, max, width, rings: new Set([...first.rings].filter(ring => second.rings.has(ring))) });
     }
   }
   // Runway artwork is often interrupted (crossings, gaps), so collinear pieces less than 60 pt
@@ -77,8 +79,16 @@ function runwayCandidates(chart) {
   const runways = [];
   for (const piece of candidates.sort((x, y) => (y.max - y.min) - (x.max - x.min))) {
     const runway = runways.find(value => Math.abs(value.angle - piece.angle) < 0.006 && Math.abs(value.offset - piece.offset) < 2 && piece.min < value.max + 60 && piece.max > value.min - 60);
-    if (runway) { runway.min = Math.min(runway.min, piece.min); runway.max = Math.max(runway.max, piece.max); }
-    else runways.push({ ...piece });
+    if (runway) { runway.min = Math.min(runway.min, piece.min); runway.max = Math.max(runway.max, piece.max); piece.rings.forEach(ring => runway.rings.add(ring)); }
+    else runways.push({ ...piece, rings: new Set(piece.rings) });
+  }
+  // Edge pairs stop where turn pads widen the runway, so extend each runway through the vertices of
+  // its own artwork (pads included) lying near the centreline.
+  for (const runway of runways) {
+    for (const ring of runway.rings) for (const [x, y] of rings[ring]) {
+      const across = Math.abs(-x * runway.uy + y * runway.ux - runway.offset), along = x * runway.ux + y * runway.uy;
+      if (across <= runway.width * 1.6 + 1 && along > runway.min - 60 && along < runway.max + 60) { runway.min = Math.min(runway.min, along); runway.max = Math.max(runway.max, along); }
+    }
   }
   return runways.filter(value => value.max - value.min > 60 && (value.max - value.min) / value.width > 12).map(({ ux, uy, offset, min, max, width }) => {
     const point = along => [along * ux - offset * uy, along * uy + offset * ux];
@@ -249,14 +259,16 @@ async function fromChart(icao, config) {
     const span = Math.hypot(Math.max(...ring.map(p => p[0])) - Math.min(...ring.map(p => p[0])), Math.max(...ring.map(p => p[1])) - Math.min(...ring.map(p => p[1])));
     return span > 40 && ring.filter(alongRunway).length / ring.length > 0.6;
   }).map(ring => simplifyRing(ring.map(point => fit.map(point)), 1).map(point => frame.toGeo(point).map(round)));
+  // Some charts share the pavement grey with sea or terrain; maxSpan (points) drops those shapes.
+  const pavementSized = ring => !config.maxSpan || Math.hypot(Math.max(...ring.map(p => p[0])) - Math.min(...ring.map(p => p[0])), Math.max(...ring.map(p => p[1])) - Math.min(...ring.map(p => p[1]))) <= config.maxSpan;
   const areas = [];
   for (const path of chart.paths.filter(value => value.filled)) {
     const kind = config.taxiway.includes(path.fill) ? 'taxiway' : config.apron.includes(path.fill) ? 'apron' : null;
     if (!kind) continue;
-    const rings = path.subpaths.filter(ring => ring.length > 2).map(ring => simplifyRing(ring.map(point => fit.map(point)), 1).map(point => frame.toGeo(point).map(round)));
+    const rings = path.subpaths.filter(ring => ring.length > 2 && pavementSized(ring)).map(ring => simplifyRing(ring.map(point => fit.map(point)), 1).map(point => frame.toGeo(point).map(round)));
     if (rings.length) areas.push({ kind, rings });
   }
-  const pageRings = chart.paths.filter(value => value.filled && [...config.taxiway, ...config.apron].includes(value.fill)).flatMap(value => value.subpaths);
+  const pageRings = chart.paths.filter(value => value.filled && [...config.taxiway, ...config.apron].includes(value.fill)).flatMap(value => value.subpaths).filter(pavementSized);
   const labels = [];
   // Taxiway names are set horizontally; rotated letters belong to the graticule labels.
   for (const item of chart.text.filter(value => LABEL.test(value.text) && !NOT_TAXIWAYS.has(value.text) && Math.abs(value.angle) < 0.02)) {
@@ -267,6 +279,9 @@ async function fromChart(icao, config) {
   }
   console.log(`${icao}: chart fit residual ${fit.residual.toFixed(1)} m, ${fit.metresPerPoint.toFixed(3)} m/pt (1:${Math.round(fit.metresPerPoint / 0.0003528)}), rotation ${fit.rotation.toFixed(2)}°, ${fit.anchored} anchored runways, ${areas.length} areas, ${runways.length} runway shapes, ${labels.length} labels`);
   if (fit.residual > 25) throw new Error(`${icao}: georeference residual too large (${fit.residual.toFixed(1)} m)`);
+  // With a single anchored runway the residual is trivially zero; the printed scale is the independent check.
+  const printed = printedScale(chart);
+  if (printed && Math.abs(fit.metresPerPoint / printed - 1) > 0.015) throw new Error(`${icao}: fitted scale disagrees with the printed chart scale`);
   return {
     source: { kind: 'chart', name: layout.source.name, url: layout.source.url, effective: layout.source.effective, retrieved: new Date().toISOString().slice(0, 10), publisher: 'NAVIAIR · AIP Denmark', derivation: `Pavement extracted from the ADC vector artwork and fitted to published runway thresholds (max residual ${Math.round(fit.residual)} m). Not for navigation.` },
     areas, runways, labels, info: taxiwayInfo(chart),
