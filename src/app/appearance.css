@@ -50,3 +50,24 @@
 .command-bar .brand-button:hover .brand-logo{opacity:.72}
 .account-identity{display:flex;flex-direction:column;gap:1px}
 .account-identity span{font-size:13px;line-height:18px;color:var(--muted);font-variant-numeric:tabular-nums}
+.command-bar .airport-switcher{margin-left:auto;flex:0 0 auto;padding:0 20px 0 0}
+.command-bar .airport-switcher~.clock{margin-left:0}
+.command-bar .airport-switcher>button{gap:14px;width:auto;min-width:210px;min-height:51px;padding:0 14px;border:1px solid #b8c9db;border-radius:6px;background:white}
+.command-bar .airport-switcher>button[aria-expanded=true]{border-color:var(--focus)}
+.airport-switcher strong{font-size:15px;line-height:21px}
+.airport-switcher small{font-size:12px;line-height:17px}
+.airport-menu{right:20px;width:280px;padding-bottom:6px}
+.airport-menu [role=listbox]{max-height:min(450px,62vh);overflow:auto}
+.airport-menu [role=option].selected{background:var(--active)}
+.airport-menu [role=option][aria-selected=true]{font-weight:600}
+.airport-filter{display:flex;align-items:center;gap:8px;margin:10px;padding:0 10px;height:38px;border:1px solid #b8c9db;border-radius:6px;color:var(--muted)}
+.airport-filter:focus-within{outline:3px solid var(--focus);outline-offset:1px}
+.airport-filter input{flex:1;min-width:0;height:100%;border:0;background:transparent;font-size:14px;color:var(--navy)}
+.airport-filter input:focus-visible{outline:none}
+.airport-empty{padding:4px 16px 10px;font-size:14px;color:var(--muted)}
+[data-theme=dark] .command-bar .airport-switcher>button,[data-theme=dark] .context-menu{background:var(--dark-panel);border-color:var(--line)}
+[data-theme=dark] .command-bar .airport-switcher>button[aria-expanded=true]{border-color:var(--focus)}
+[data-theme=dark] .context-code{background:#263b55}
+[data-theme=dark] .airport-filter{border-color:var(--line)}
+@media(max-width:1250px){.command-bar .airport-switcher>button{min-width:0}.airport-switcher-name{display:none}}
+@media(max-width:650px){.command-bar .airport-switcher{padding:0 10px 0 0}.command-bar .airport-switcher>button{min-height:40px;padding:0 10px;gap:8px}.airport-switcher small{display:none}.airport-menu{right:10px;width:250px}}

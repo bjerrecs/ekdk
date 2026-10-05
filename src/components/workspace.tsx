@@ -30,6 +30,7 @@ const navigation: { section: Section; label: string; icon: LucideIcon }[] = [
   { section: 'pinned', label: 'Pinned', icon: Pin },
 ];
 const defaultPins: Item[] = topics.slice(0, 5).map(topic => ({ id: `reference-${topic}`, label: topic, section: 'procedures', topic }));
+const defaultRunway = (value: Airport) => value.id === 'EKCH' ? '22L' : value.runways[0];
 const initialWorkspace: SavedWorkspace = { airportId: null, section: 'overview', runway: '22L', procedure: 'ILS', topic: 'Danish AFIS procedures', open: [], pinned: defaultPins, activeId: null, viewers: {}, configurations: {} };
 
 function ReferenceIcon({ section }: { section: Section }) {
@@ -72,6 +73,30 @@ function ChartViewer({ item, airport, active, state, update, pinned, onPin }: { 
   </section>;
 }
 
+function AirportSwitcher({ current, open, setOpen, select }: { current?: Airport; open: boolean; setOpen: (open: boolean) => void; select: (airport: Airport) => void }) {
+  const [filter, setFilter] = useState('');
+  const [index, setIndex] = useState(0);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const needle = filter.trim().toLowerCase();
+  const matches = airports.filter(value => !needle || [value.id, value.name, value.local, ...value.aliases].some(term => term.toLowerCase().includes(needle)));
+  useEffect(() => { if (open) { setFilter(''); setIndex(Math.max(0, airports.findIndex(value => value.id === current?.id))); } }, [open]);
+  useEffect(() => { if (open && matches[index]) document.getElementById(`airport-option-${matches[index].id}`)?.scrollIntoView({ block: 'nearest' }); }, [open, index, filter]);
+  function choose(value: Airport) { select(value); trigger.current?.focus(); }
+  return <div className="context-control airport-switcher">
+    <button ref={trigger} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? 'airport-menu' : undefined} onClick={() => setOpen(!open)}><span><strong>{current ? <>{current.id}<span className="airport-switcher-name"> · {current.name}</span></> : 'Choose airport'}</strong><small>{current ? 'Switch airport' : 'No airport selected'}</small></span><ChevronDown size={18} /></button>
+    {open && <div className="context-menu airport-menu" id="airport-menu">
+      <label className="airport-filter"><Search size={16} /><input autoFocus value={filter} placeholder="Filter airports" aria-label="Filter airports" role="combobox" aria-expanded="true" aria-controls="airport-options" aria-autocomplete="list" aria-activedescendant={matches[index] ? `airport-option-${matches[index].id}` : undefined} onChange={event => { setFilter(event.target.value); setIndex(0); }} onKeyDown={event => {
+        if (event.key === 'ArrowDown') { event.preventDefault(); setIndex(previous => Math.min(previous + 1, matches.length - 1)); }
+        if (event.key === 'ArrowUp') { event.preventDefault(); setIndex(previous => Math.max(previous - 1, 0)); }
+        if (event.key === 'Enter' && matches[index]) { event.preventDefault(); choose(matches[index]); }
+        if (event.key === 'Escape') { setOpen(false); trigger.current?.focus(); }
+      }} /></label>
+      <div role="listbox" id="airport-options" aria-label="Airports">{matches.map((value, position) => <button id={`airport-option-${value.id}`} key={value.id} role="option" aria-selected={value.id === current?.id} className={position === index ? 'selected' : ''} onMouseEnter={() => setIndex(position)} onClick={() => choose(value)}><span className="context-code">{value.id}</span><span>{value.name}</span>{value.id === current?.id && <Check size={16} />}</button>)}</div>
+      {!matches.length && <p className="airport-empty">No matching airport</p>}
+    </div>}
+  </div>;
+}
+
 export default function Workspace({ member, logout }: { member: { name: string; cid: string }; logout: () => Promise<void> }) {
   const [workspace, setWorkspace] = useState<SavedWorkspace>(initialWorkspace);
   const [ready, setReady] = useState(false);
@@ -79,6 +104,7 @@ export default function Workspace({ member, logout }: { member: { name: string; 
   const [searchOpen, setSearchOpen] = useState(false);
   const [resultIndex, setResultIndex] = useState(0);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [airportMenuOpen, setAirportMenuOpen] = useState(false);
   const { preference, setPreference } = useTheme();
   const [clock, setClock] = useState('--:--:--');
   const [overviewTab, setOverviewTab] = useState('Summary');
@@ -111,7 +137,7 @@ export default function Workspace({ member, logout }: { member: { name: string; 
     const timer = setInterval(tick, 1000);
     const keyboard = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); searchRef.current?.focus(); setSearchOpen(true); }
-      if (event.key === 'Escape') { setSearchOpen(false); setAccountOpen(false); }
+      if (event.key === 'Escape') { setSearchOpen(false); setAccountOpen(false); setAirportMenuOpen(false); }
     };
     window.addEventListener('keydown', keyboard);
     return () => { clearInterval(timer); window.removeEventListener('keydown', keyboard); };
@@ -128,21 +154,27 @@ export default function Workspace({ member, logout }: { member: { name: string; 
     setSearchOpen(false);
   }
   function openAirport(value: Airport, section: Section = 'airport') {
-    const runway = value.id === 'EKCH' ? '22L' : value.runways[0];
-    openItem({ id: `${value.id}-${section}`, airportId: value.id, section, label: `${section === 'airport' ? 'Airport' : section === 'weather' ? 'Weather' : 'Charts'} (${value.id})`, runway });
+    openItem({ id: `${value.id}-${section}`, airportId: value.id, section, label: `${section === 'airport' ? 'Airport' : section === 'weather' ? 'Weather' : 'Charts'} (${value.id})`, runway: defaultRunway(value) });
     setOverviewTab('Summary');
   }
   function openApproach(value: Airport, runway = workspace.runway, procedure = workspace.procedure) { openItem({ id: `${value.id}-${procedure}-${runway}`, label: `${value.id} · ${procedure} ${runway} reference`, airportId: value.id, section: 'approaches', runway, procedure }); }
   function openChart(value: Airport, chart: ChartDescriptor, runway?: string) { openItem({ id: `${value.id}-chart-${chart.name}`, airportId: value.id, label: chart.title, section: 'charts', runway, chartName: chart.name }); }
+  function switchAirport(value: Airport) {
+    setAirportMenuOpen(false);
+    if (value.id === airport?.id && workspace.section !== 'overview') return;
+    // Stay in the current airport section; FIR-wide sections land on the airport overview.
+    if (workspace.section === 'approaches') openApproach(value, defaultRunway(value));
+    else openAirport(value, workspace.section === 'weather' || workspace.section === 'charts' ? workspace.section : 'airport');
+  }
   function openReference(topic: string) { openItem({ id: `reference-${topic}`, label: topic, section: 'procedures', topic }); }
   function navigate(section: Section) {
     setSearchOpen(false);
     if (section === 'airport' || section === 'weather' || section === 'charts') {
       if (airport) openAirport(airport, section);
-      else { setWorkspace(previous => ({ ...previous, section: 'overview', activeId: null })); setToast('Choose an airport to open this section.'); }
+      else { setWorkspace(previous => ({ ...previous, section: 'overview', activeId: null })); setToast('Choose an airport to open this section.'); setAirportMenuOpen(true); }
     } else if (section === 'approaches') {
       if (airport) openApproach(airport);
-      else { setWorkspace(previous => ({ ...previous, section: 'overview', activeId: null })); setToast('Choose an airport to browse approaches.'); }
+      else { setWorkspace(previous => ({ ...previous, section: 'overview', activeId: null })); setToast('Choose an airport to browse approaches.'); setAirportMenuOpen(true); }
     } else if (section === 'procedures') openReference(workspace.topic);
     else setWorkspace(previous => ({ ...previous, section, activeId: null }));
   }
@@ -172,17 +204,18 @@ export default function Workspace({ member, logout }: { member: { name: string; 
   return <div className="workspace-shell">
     <a className="skip-link" href="#workspace-main">Skip to workspace</a>
     <header className="command-bar"><button className="brand-button" aria-label="Copenhagen FIR overview" onClick={() => navigate('overview')}><Brand /></button>
-      <div className="search-container"><Search size={23} className="search-icon" /><input ref={searchRef} value={query} placeholder="Search airports, charts, procedures..." aria-label="Search airports, charts and procedures" role="combobox" aria-expanded={searchOpen} aria-controls="search-results" aria-autocomplete="list" aria-activedescendant={searchOpen && results[resultIndex] ? `search-result-${resultIndex}` : undefined} onFocus={() => setSearchOpen(true)} onChange={event => { setQuery(event.target.value); setSearchOpen(true); }} onKeyDown={event => {
+      <div className="search-container"><Search size={23} className="search-icon" /><input ref={searchRef} value={query} placeholder="Search airports, charts, procedures..." aria-label="Search airports, charts and procedures" role="combobox" aria-expanded={searchOpen} aria-controls="search-results" aria-autocomplete="list" aria-activedescendant={searchOpen && results[resultIndex] ? `search-result-${resultIndex}` : undefined} onFocus={() => { setSearchOpen(true); setAirportMenuOpen(false); }} onChange={event => { setQuery(event.target.value); setSearchOpen(true); }} onKeyDown={event => {
         if (event.key === 'ArrowDown') { event.preventDefault(); setResultIndex(previous => Math.min(previous + 1, results.length - 1)); }
         if (event.key === 'ArrowUp') { event.preventDefault(); setResultIndex(previous => Math.max(previous - 1, 0)); }
         if (event.key === 'Enter') { event.preventDefault(); if (results.length === 1 || searchOpen) selectResult(Math.max(0, resultIndex)); else setSearchOpen(true); }
       }} /><div className="shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></div>
       {searchOpen && <div className="search-results" id="search-results" role="listbox" aria-label="Workspace search results">{query.trim() ? results.length ? <><div className="search-help">{results.length > 1 ? 'Choose a matching reference' : 'Matching reference'}</div>{results.map((result, index) => <button id={`search-result-${index}`} key={result.label} role="option" aria-selected={index === resultIndex} className={index === resultIndex ? 'selected' : ''} onMouseDown={event => event.preventDefault()} onClick={() => selectResult(index)}><FileText size={19} /><span>{result.label}</span><ArrowUpRight size={16} /></button>)}</> : <div className="search-empty"><Search size={23} /><strong>No matching reference</strong><p>Try an airport identifier, runway or procedure topic.</p></div> : <><div className="search-help">Search your workspace</div><button role="option" aria-selected={false} onClick={() => { setQuery('cph 22l ils'); searchRef.current?.focus(); }}><Target size={18} /><span>cph 22l ils</span><small>Approach quick reference</small></button><button role="option" aria-selected={false} onClick={() => { setQuery('EKSB'); searchRef.current?.focus(); }}><Plane size={18} /><span>EKSB</span><small>Airport overview</small></button><p className="search-hint">Airport names, aliases, runways and reference topics</p></>}</div>}
       </div>
+      <AirportSwitcher current={airport} open={airportMenuOpen} setOpen={open => { setAirportMenuOpen(open); setSearchOpen(false); setAccountOpen(false); }} select={switchAirport} />
       <div className="clock" aria-label="Current UTC time"><span>UTC</span><strong suppressHydrationWarning>{clock}</strong></div>
-      <div className="account-control"><button className="account-trigger" aria-label="Account settings" title="Account settings" aria-expanded={accountOpen} aria-controls={accountOpen ? "account-settings-menu" : undefined} onClick={() => { setAccountOpen(!accountOpen); setSearchOpen(false); }}><UserRound size={23} strokeWidth={1.7} /></button>{accountOpen && <div className="account-menu" id="account-settings-menu"><ShieldCheck size={19} /><div className="account-identity"><strong>{member.name}</strong><span title="VATSIM CID">{member.cid}</span></div><label className="appearance-setting"><span><Moon size={17} />Appearance</span><select value={preference} onChange={event => setPreference(event.target.value as ThemePreference)}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><button onClick={() => { sessionStorage.removeItem(storageKey); void logout(); }}><LogOut size={17} />Sign out</button></div>}</div>
+      <div className="account-control"><button className="account-trigger" aria-label="Account settings" title="Account settings" aria-expanded={accountOpen} aria-controls={accountOpen ? "account-settings-menu" : undefined} onClick={() => { setAccountOpen(!accountOpen); setSearchOpen(false); setAirportMenuOpen(false); }}><UserRound size={23} strokeWidth={1.7} /></button>{accountOpen && <div className="account-menu" id="account-settings-menu"><ShieldCheck size={19} /><div className="account-identity"><strong>{member.name}</strong><span title="VATSIM CID">{member.cid}</span></div><label className="appearance-setting"><span><Moon size={17} />Appearance</span><select value={preference} onChange={event => setPreference(event.target.value as ThemePreference)}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><button onClick={() => { sessionStorage.removeItem(storageKey); void logout(); }}><LogOut size={17} />Sign out</button></div>}</div>
     </header>
-    {(searchOpen || accountOpen) && <button className="dropdown-dismiss" tabIndex={-1} aria-label="Close open menu" onClick={() => { setSearchOpen(false); setAccountOpen(false); }} />}
+    {(searchOpen || accountOpen || airportMenuOpen) && <button className="dropdown-dismiss" tabIndex={-1} aria-label="Close open menu" onClick={() => { setSearchOpen(false); setAccountOpen(false); setAirportMenuOpen(false); }} />}
     <aside className="sidebar"><nav aria-label="Primary navigation">{navigation.map(({ section, label }) => <button key={section} title={label} aria-current={workspace.section === section ? 'page' : undefined} onClick={() => navigate(section)}><ReferenceIcon section={section} /><span>{label}</span>{section === 'pinned' && workspace.pinned.length > 5 && <small>{workspace.pinned.length}</small>}</button>)}</nav><button className="tools-nav" title="Guide" aria-current={workspace.section === 'tools' ? 'page' : undefined} onClick={() => navigate('tools')}><BookOpen size={23} /><span>Guide</span></button></aside>
     <main id="workspace-main" className={`main-content ${currentChart ? 'has-chart' : ''}`} ref={contentRef} tabIndex={-1}>
       {!ready ? <div className="workspace-loading">Restoring workspace…</div> : <>
