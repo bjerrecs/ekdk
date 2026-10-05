@@ -1,22 +1,40 @@
 # Portainer stack. Set the variables below in the stack's "Environment variables" section.
+# Routed by the Traefik stack in bjerrecs/infra (stacks/proxy) over the external `proxy` network.
 services:
   ekdk:
     image: ghcr.io/bjerrecs/ekdk:${EKDK_TAG:-latest}
-    container_name: ekdk
     restart: unless-stopped
-    ports:
-      - "${EKDK_PORT:-3000}:3000"
     environment:
-      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
-      AUTH_URL: ${AUTH_URL:?AUTH_URL is required, e.g. https://ekdk.dk}
-      # Required behind a reverse proxy; AUTH_URL pins the canonical origin.
-      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
-      VATSIM_CLIENT_ID: ${VATSIM_CLIENT_ID:?VATSIM_CLIENT_ID is required}
-      VATSIM_CLIENT_SECRET: ${VATSIM_CLIENT_SECRET:?VATSIM_CLIENT_SECRET is required}
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in the Portainer stack environment}
+      AUTH_URL: https://${APP_HOST:?Set APP_HOST in the Portainer stack environment}
+      # Required behind Traefik; AUTH_URL pins the canonical origin.
+      AUTH_TRUST_HOST: "true"
+      VATSIM_CLIENT_ID: ${VATSIM_CLIENT_ID:?Set the VATSIM Connect client ID}
+      VATSIM_CLIENT_SECRET: ${VATSIM_CLIENT_SECRET:?Set the VATSIM Connect client secret}
       VATSIM_USE_SANDBOX: ${VATSIM_USE_SANDBOX:-false}
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.ekdk.rule=Host(`${APP_HOST}`)
+      - traefik.http.routers.ekdk.entrypoints=websecure
+      - traefik.http.routers.ekdk.tls=true
+      - traefik.http.routers.ekdk.tls.certresolver=letsencrypt
+      - traefik.http.services.ekdk.loadbalancer.server.port=3000
     read_only: true
     tmpfs:
-      - /tmp
-      - /app/.next/cache
+      - /tmp:size=64m,mode=1777
+      - /app/.next/cache:size=256m,uid=1000,gid=1000
     security_opt:
       - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  proxy:
+    external: true
+    name: proxy
