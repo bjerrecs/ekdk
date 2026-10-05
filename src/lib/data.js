@@ -8,6 +8,7 @@ export const airports = [
   { id: 'EKRN', name: 'Bornholm', local: 'Rønne', aliases: ['rnn', 'ronne', 'rønne'], runways: ['11', '29'], crop: [] },
   { id: 'EKSP', name: 'Skrydstrup', local: '', aliases: ['sks'], runways: ['10L', '10R', '28L', '28R'], crop: [] },
   { id: 'EKOD', name: 'Odense', local: 'Hans Christian Andersen', aliases: ['ode', 'hca'], runways: ['06', '24'], crop: [] },
+  { id: 'EKEB', name: 'Esbjerg', local: '', aliases: ['ebj'], runways: ['08', '26'], crop: [] },
 ];
 export const topics = ['EKDK FIR', 'Airspace', 'LOAs', 'Phraseology', 'ATS Units', 'Parking', 'Danish AFIS procedures', 'IFR clearances', 'Wake turbulence', 'Airspace classes', 'EuroScope', 'Alias files', 'Local procedures'];
 export const sources = { charts: 'https://aim.naviair.dk/', procedures: 'https://wiki.vatsim-scandinavia.org/' };

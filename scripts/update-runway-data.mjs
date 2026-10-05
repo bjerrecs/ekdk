@@ -1,7 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
-const output = {};
-for (const icao of ['EKCH', 'EKBI', 'EKYT', 'EKAH', 'EKRK', 'EKSB', 'EKRN', 'EKSP', 'EKOD']) {
+// Pass ICAO codes to regenerate only those airports; the rest of the existing file is kept.
+const target = 'src/lib/runway-data.json';
+const requested = process.argv.slice(2).map(value => value.toUpperCase());
+const output = requested.length ? JSON.parse(await readFile(target, 'utf8')) : {};
+for (const icao of requested.length ? requested : ['EKCH', 'EKBI', 'EKYT', 'EKAH', 'EKRK', 'EKSB', 'EKRN', 'EKSP', 'EKOD', 'EKEB']) {
   const text = await readFile(`tmp/pdfs/${icao}-AD2.txt`, 'utf8');
   const start = text.indexOf('12. Runway Physical Characteristics');
   const section = text.slice(start, text.indexOf('13. Declared Distances', start));
@@ -20,4 +23,4 @@ for (const icao of ['EKCH', 'EKBI', 'EKYT', 'EKAH', 'EKRK', 'EKSB', 'EKRN', 'EKS
   console.log(`${icao}: ${thresholds.length} thresholds verified against ${source.name}`);
 }
 const content = JSON.stringify(output, null, 2);
-await writeFile(process.argv[2] || 'src/lib/runway-data.json', content + '\n');
+await writeFile(target, content + '\n');

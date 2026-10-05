@@ -469,5 +469,44 @@
         "surface": "Asphalt"
       }
     ]
+  },
+  "EKEB": {
+    "source": {
+      "name": "EK_AD_2_EKEB_ADC_en.pdf",
+      "title": "02. EKEB ADC",
+      "url": "https://aim.naviair.dk/media/files/3ke2cn0i3ju/EK_AD_2_EKEB_ADC_en.pdf",
+      "effective": "2026-06-11",
+      "retrieved": "2026-10-05",
+      "publisher": "NAVIAIR · AIP Denmark",
+      "derivation": "Published WGS-84 runway threshold coordinates, cross-checked against the aerodrome chart. North-up local projection; widths exaggerated for readability. Not a taxiway chart."
+    },
+    "physicalSource": {
+      "name": "EK_AD_2_EKEB_en.pdf",
+      "url": "https://aim.naviair.dk/media/files/zunin1wxbvm/EK_AD_2_EKEB_en.pdf",
+      "effective": "2026-06-11",
+      "publisher": "NAVIAIR · AIP Denmark"
+    },
+    "thresholds": [
+      {
+        "runway": "08",
+        "latitude": "55 31 25.84N",
+        "longitude": "008 32 00.56E",
+        "trueBearing": 79.5,
+        "magneticBearing": 77,
+        "length": 2599,
+        "width": 45,
+        "surface": "Asphalt"
+      },
+      {
+        "runway": "26",
+        "latitude": "55 31 41.16N",
+        "longitude": "008 34 26.23E",
+        "trueBearing": 259.5,
+        "magneticBearing": 257,
+        "length": 2599,
+        "width": 45,
+        "surface": "Asphalt"
+      }
+    ]
   }
 }

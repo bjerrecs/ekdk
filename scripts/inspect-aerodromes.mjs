@@ -5,7 +5,9 @@ import { createCanvas, DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
 Object.assign(globalThis, { DOMMatrix, ImageData, Path2D });
 const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
 await mkdir('tmp/pdfs', { recursive: true });
-for (const icao of ['EKCH', 'EKBI', 'EKYT', 'EKAH', 'EKRK', 'EKSB', 'EKRN', 'EKSP', 'EKOD']) {
+// Pass ICAO codes to inspect only those airports.
+const airports = process.argv.slice(2).length ? process.argv.slice(2).map(value => value.toUpperCase()) : ['EKCH', 'EKBI', 'EKYT', 'EKAH', 'EKRK', 'EKSB', 'EKRN', 'EKSP', 'EKOD', 'EKEB'];
+for (const icao of airports) {
   for (const part of ['ADC', 'AD2']) {
     const chart = await getChart(part === 'ADC' ? { icao, chart: 'ADC' } : { icao });
     const response = await fetch(chart.url);

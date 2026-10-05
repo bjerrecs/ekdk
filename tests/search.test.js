@@ -4,7 +4,7 @@ import { searchWorkspace } from '../src/lib/search.js';
 import { airports } from '../src/lib/data.js';
 test('CPH alias resolves the 22L ILS use case', () => { const [result] = searchWorkspace('cph 22l ils'); assert.equal(result.airport.id, 'EKCH'); assert.equal(result.runway, '22L'); assert.equal(result.section, 'approaches'); });
 test('EKSB opens airport overview', () => { assert.equal(searchWorkspace('EKSB')[0].section, 'airport'); });
-test('new airport cards resolve by ICAO and local airport names', () => { for (const query of ['EKRN', 'EKSP', 'EKOD', 'Rønne', 'Skrydstrup', 'Odense']) assert.equal(searchWorkspace(query)[0].section, 'airport'); });
+test('new airport cards resolve by ICAO and local airport names', () => { for (const query of ['EKRN', 'EKSP', 'EKOD', 'EKEB', 'Rønne', 'Skrydstrup', 'Odense', 'Esbjerg']) assert.equal(searchWorkspace(query)[0].section, 'airport'); });
 test('unspecified runway side produces selectable matches', () => { assert.equal(searchWorkspace('cph 22 ils').length, 2); });
 test('natural language resolves airport and runway', () => { assert.equal(searchWorkspace('show ILS for runway 22L at Copenhagen')[0].runway, '22L'); });
 test('contextual weather query preserves airport', () => { assert.equal(searchWorkspace('weather', airports[1])[0].airport.id, 'EKBI'); });

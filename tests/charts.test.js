@@ -28,7 +28,7 @@ test('source coordinates project north upward and preserve runway pairings', () 
   assert.ok(copenhagen[0].end.y < copenhagen[0].start.y);
 });
 test('every diagram has complete reciprocal source coordinates', () => {
-  const counts = { EKCH:3, EKBI:1, EKYT:2, EKAH:2, EKRK:2, EKSB:1, EKRN:1, EKSP:2, EKOD:1 };
+  const counts = { EKCH:3, EKBI:1, EKYT:2, EKAH:2, EKRK:2, EKSB:1, EKRN:1, EKSP:2, EKOD:1, EKEB:1 };
   for (const [icao, layout] of Object.entries(runwayData)) {
     assert.equal(projectRunways(layout.thresholds).length, counts[icao]);
     assert.ok(isNaviairPdfUrl(layout.source.url));
