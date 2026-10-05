@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, BookOpen, Check, ChevronDown, ChevronRight, Cloud, CloudSun, Copy, ExternalLink, FileText, Gauge, Home, Info, LogOut, Map, Maximize, Minus, Navigation, Pin, Plane, Plus, Radio, RotateCw, Search, Settings, ShieldCheck, SlidersHorizontal, Target, Thermometer, Trash2, Wind, Wrench, X } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Check, ChevronDown, ChevronRight, Cloud, CloudSun, Copy, ExternalLink, FileText, Gauge, Home, Info, LogOut, Map, Maximize, Minus, Navigation, Pin, Plane, Plus, Radio, RotateCw, Search, Settings, ShieldCheck, SlidersHorizontal, Target, Thermometer, Trash2, Wind, Wrench, UserRound, Moon, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Brand from './brand';
+import { useTheme, type ThemePreference } from './theme-provider';
 import { airports, sources, topics } from '@/lib/data';
 import { searchWorkspace } from '@/lib/search';
 import RunwayDiagram, { runwayLayout } from './runway-diagram';
@@ -78,6 +79,7 @@ export default function Workspace({ member, logout }: { member: { name: string; 
   const [searchOpen, setSearchOpen] = useState(false);
   const [resultIndex, setResultIndex] = useState(0);
   const [accountOpen, setAccountOpen] = useState(false);
+  const { preference, setPreference } = useTheme();
   const [clock, setClock] = useState('--:--:--');
   const [overviewTab, setOverviewTab] = useState('Summary');
   const [procedureFilter, setProcedureFilter] = useState('');
@@ -177,7 +179,8 @@ export default function Workspace({ member, logout }: { member: { name: string; 
       }} /><div className="shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></div>
       {searchOpen && <div className="search-results" id="search-results" role="listbox" aria-label="Workspace search results">{query.trim() ? results.length ? <><div className="search-help">{results.length > 1 ? 'Choose a matching reference' : 'Matching reference'}</div>{results.map((result, index) => <button id={`search-result-${index}`} key={result.label} role="option" aria-selected={index === resultIndex} className={index === resultIndex ? 'selected' : ''} onMouseDown={event => event.preventDefault()} onClick={() => selectResult(index)}><FileText size={19} /><span>{result.label}</span><ArrowUpRight size={16} /></button>)}</> : <div className="search-empty"><Search size={23} /><strong>No matching reference</strong><p>Try an airport identifier, runway or procedure topic.</p></div> : <><div className="search-help">Search your workspace</div><button role="option" aria-selected={false} onClick={() => { setQuery('cph 22l ils'); searchRef.current?.focus(); }}><Target size={18} /><span>cph 22l ils</span><small>Approach quick reference</small></button><button role="option" aria-selected={false} onClick={() => { setQuery('EKSB'); searchRef.current?.focus(); }}><Plane size={18} /><span>EKSB</span><small>Airport overview</small></button><p className="search-hint">Airport names, aliases, runways and reference topics</p></>}</div>}
       </div>
-      <div className="clock"><button aria-label="Account and session menu" aria-expanded={accountOpen} onClick={() => { setAccountOpen(!accountOpen); }}><span>UTC</span><strong suppressHydrationWarning>{clock}</strong></button>{accountOpen && <div className="account-menu"><ShieldCheck size={19} /><strong>{member.name}</strong><span>VATSIM CID {member.cid}</span><button onClick={() => { sessionStorage.removeItem(storageKey); void logout(); }}><LogOut size={17} />Sign out</button></div>}</div>
+      <div className="clock" aria-label="Current UTC time"><span>UTC</span><strong suppressHydrationWarning>{clock}</strong></div>
+      <div className="account-control"><button className="account-trigger" aria-label="Account settings" title="Account settings" aria-expanded={accountOpen} aria-controls={accountOpen ? "account-settings-menu" : undefined} onClick={() => { setAccountOpen(!accountOpen); setSearchOpen(false); }}><UserRound size={23} strokeWidth={1.7} /></button>{accountOpen && <div className="account-menu" id="account-settings-menu"><ShieldCheck size={19} /><strong>{member.name}</strong><span>VATSIM CID {member.cid}</span><label className="appearance-setting"><span><Moon size={17} />Appearance</span><select value={preference} onChange={event => setPreference(event.target.value as ThemePreference)}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><button onClick={() => { sessionStorage.removeItem(storageKey); void logout(); }}><LogOut size={17} />Sign out</button></div>}</div>
     </header>
     {(searchOpen || accountOpen) && <button className="dropdown-dismiss" tabIndex={-1} aria-label="Close open menu" onClick={() => { setSearchOpen(false); setAccountOpen(false); }} />}
     <aside className="sidebar"><nav aria-label="Primary navigation">{navigation.map(({ section, label }) => <button key={section} title={label} aria-current={workspace.section === section ? 'page' : undefined} onClick={() => navigate(section)}><ReferenceIcon section={section} /><span>{label}</span>{section === 'pinned' && workspace.pinned.length > 5 && <small>{workspace.pinned.length}</small>}</button>)}</nav><button className="tools-nav" title="Guide" aria-current={workspace.section === 'tools' ? 'page' : undefined} onClick={() => navigate('tools')}><BookOpen size={23} /><span>Guide</span></button></aside>

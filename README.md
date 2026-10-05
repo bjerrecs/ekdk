@@ -20,6 +20,7 @@ Without credentials, the public sign-in page explains the configuration requirem
 - Airport, approach, chart, weather, procedure, tool and pinned views share persistent navigation and airport context.
 - Pin references, switch open items and retain chart zoom, rotation and scroll position for the browser session.
 - `Ctrl/Cmd+K` focuses search; arrow keys select results; Enter opens; Escape dismisses.
+- The person icon beside the UTC clock opens account settings. Choose Light, Dark or System appearance; the preference is remembered on this device. Dark mode uses the supplied negative logo while official PDF chart artwork retains its source colors.
 
 ## Operational content
 
