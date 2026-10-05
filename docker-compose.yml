@@ -1,0 +1,24 @@
+# Portainer stack. Set the variables below in the stack's "Environment variables" section.
+services:
+  ekdk:
+    image: ${EKDK_IMAGE:-ekdk-workspace:latest}
+    build:
+      context: .
+    container_name: ekdk
+    restart: unless-stopped
+    ports:
+      - "${EKDK_PORT:-3000}:3000"
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      AUTH_URL: ${AUTH_URL:?AUTH_URL is required, e.g. https://ekdk.dk}
+      # Required behind a reverse proxy; AUTH_URL pins the canonical origin.
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
+      VATSIM_CLIENT_ID: ${VATSIM_CLIENT_ID:?VATSIM_CLIENT_ID is required}
+      VATSIM_CLIENT_SECRET: ${VATSIM_CLIENT_SECRET:?VATSIM_CLIENT_SECRET is required}
+      VATSIM_USE_SANDBOX: ${VATSIM_USE_SANDBOX:-false}
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    security_opt:
+      - no-new-privileges:true

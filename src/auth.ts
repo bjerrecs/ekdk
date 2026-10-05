@@ -8,7 +8,7 @@ const vatsimBase = process.env.VATSIM_USE_SANDBOX === 'true'
 export const authConfigured = Boolean(process.env.AUTH_SECRET && process.env.VATSIM_CLIENT_ID && process.env.VATSIM_CLIENT_SECRET);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: process.env.NODE_ENV === 'development',
+  trustHost: process.env.NODE_ENV === 'development' || process.env.AUTH_TRUST_HOST === 'true',
   pages: { signIn: '/login', error: '/login' },
   session: { strategy: 'jwt', maxAge: 8 * 60 * 60 },
   providers: [{

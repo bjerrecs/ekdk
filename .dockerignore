@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+tmp
+public/pdfjs
+.git
+.env*
+!.env.example
+*.tsbuildinfo
+Dockerfile
+docker-compose.yml
